@@ -1,0 +1,34 @@
+# File: requirements-gpu.txt
+# Directory: ./
+
+# Core dependencies
+torch>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+
+# Model implementations (GPU environment)
+transformers>=4.30.0
+mamba-ssm>=1.0.0
+
+# Development and testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Logging and utilities
+tensorboard>=2.13.0
+wandb>=0.15.0
+
+# Data handling
+datasets>=2.13.0
+tokenizers>=0.13.0
+
+# Notebook support
+jupyter>=1.0.0
+ipython>=8.0.0
+
+# GPU-specific packages
+accelerate>=0.20.0
+bitsandbytes>=0.41.0

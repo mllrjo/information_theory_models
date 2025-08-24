@@ -1,338 +1,285 @@
 # File: function_declarations.py
-# Directory: ./
-# File: function_declarations.py
-# Directory: ./
-
 """
-Central registry of all function signatures with explicit types and descriptions.
-This serves as the contract for all modules in the information theory models project.
+Function declarations for Morris reproduction project.
+Updated with enhanced logging capabilities for entropy measurements.
 """
 
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Optional, List, Union, Tuple
 import torch
 import logging
 
-# =============================================================================
-# DEVICE MANAGEMENT (src/utils/device_manager.py)
-# =============================================================================
+# ===== ENHANCED LOGGING MODULE (src/utils/logging_config.py) =====
 
-def detect_device() -> str:
+def setup_morris_entropy_logger(
+    experiment_name: str,
+    log_dir: str = "logs",
+    device: Optional[torch.device] = None
+) -> logging.Logger:
     """
-    Detect the best available device for computation.
-    
-    Returns:
-        str: Device type ('cpu', 'cuda', 'mps') based on availability
-        
-    Raises:
-        RuntimeError: If no compatible device is found
-        
-    Example:
-        device = detect_device()  # Returns 'cpu' on Mac, 'cuda' on GPU systems
+    Set up structured logger for Morris entropy measurements.
+    Creates directory structure and configures JSON logging for H(X), H(X|θ) measurements.
     """
 
-def get_device_config(device_type: str) -> Dict[str, Any]:
+def create_experiment_log_structure(
+    experiment_name: str,
+    device: str,
+    model_params: Optional[int] = None,
+    dataset_size: Optional[int] = None
+) -> Dict[str, Any]:
     """
-    Get device-specific configuration settings.
-    
-    Args:
-        device_type: Device type from detect_device()
-        
-    Returns:
-        Dict containing device settings:
-        - 'device': torch.device object
-        - 'dtype': recommended torch dtype
-        - 'batch_size': recommended batch size
-        - 'num_workers': recommended dataloader workers
-        
-    Raises:
-        ValueError: If device_type is not supported
-        
-    Example:
-        config = get_device_config('cpu')
-        # {'device': torch.device('cpu'), 'dtype': torch.float32, ...}
+    Create structured log entry for Morris experiment initialization.
+    Returns standardized experiment metadata for Morris Figure 1 reproduction.
     """
 
-def validate_device_config(config: Dict[str, Any]) -> bool:
+def log_entropy_measurements(
+    logger: logging.Logger,
+    experiment_name: str,
+    step: int,
+    entropy_dict: Dict[str, float],
+    model_params: int,
+    dataset_size: int,
+    device: str
+) -> None:
     """
-    Validate device configuration dictionary.
-    
-    Args:
-        config: Device configuration from get_device_config()
-        
-    Returns:
-        bool: True if configuration is valid
-        
-    Raises:
-        TypeError: If config structure is invalid
-        KeyError: If required keys are missing
-    """
-
-# =============================================================================
-# LOGGING MANAGEMENT (src/utils/logging_config.py)
-# =============================================================================
-
-def setup_logging(log_dir: str, experiment_name: str, log_level: str = "INFO") -> logging.Logger:
-    """
-    Configure comprehensive logging for experiments.
-    
-    Args:
-        log_dir: Directory to store log files
-        experiment_name: Name for this experiment run
-        log_level: Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
-        
-    Returns:
-        logging.Logger: Configured logger instance
-        
-    Raises:
-        OSError: If log directory cannot be created
-        ValueError: If log_level is invalid
-        
-    Example:
-        logger = setup_logging("logs", "gpt2_170k_experiment")
+    Log structured entropy measurements: H(X), H(X|θ), H(X|θ̄), H(X|θ,θ̄).
+    Automatically calculates memorization and generalization derived metrics.
     """
 
-def log_experiment_state(logger: logging.Logger, state: Dict[str, Any], checkpoint_path: str) -> None:
+def log_derived_metrics(
+    logger: logging.Logger,
+    experiment_name: str,
+    step: int,
+    memorization: float,
+    generalization: float,
+    training_loss: float,
+    device: str
+) -> None:
     """
-    Log current experiment state for reproducibility.
-    
-    Args:
-        logger: Logger instance from setup_logging()
-        state: Dictionary containing experiment state
-        checkpoint_path: Path where state will be/was saved
-        
-    Raises:
-        TypeError: If state is not serializable
-        OSError: If checkpoint_path is invalid
-        
-    Example:
-        state = {'epoch': 10, 'loss': 2.3, 'model_params': 170000}
-        log_experiment_state(logger, state, "checkpoints/epoch_10.pt")
+    Log derived Morris metrics (memorization, generalization, loss).
+    Validates finite numeric values before logging to structured format.
     """
 
-def load_experiment_state(checkpoint_path: str) -> Optional[Dict[str, Any]]:
+def log_training_step(
+    logger: logging.Logger,
+    experiment_name: str,
+    step: int,
+    loss: float,
+    entropy_measurements: Optional[Dict[str, float]] = None,
+    device: str = "cpu"
+) -> None:
     """
-    Load previously saved experiment state.
-    
-    Args:
-        checkpoint_path: Path to saved checkpoint file
-        
-    Returns:
-        Dict containing loaded state, None if file doesn't exist
-        
-    Raises:
-        RuntimeError: If checkpoint is corrupted
-        OSError: If checkpoint_path exists but is unreadable
-        
-    Example:
-        state = load_experiment_state("checkpoints/epoch_10.pt")
-        if state: print(f"Resuming from epoch {state['epoch']}")
+    Log training step with optional entropy measurements.
+    Calculates derived metrics if all required entropy values present.
     """
 
-# =============================================================================
-# DATASET MANAGEMENT (src/data/dataset_manager.py)
-# =============================================================================
-
-def create_toy_dataset(vocab_size: int, seq_length: int, num_samples: int, seed: int = 42) -> Tuple[torch.Tensor, torch.Tensor]:
+def load_experiment_state(
+    experiment_name: str,
+    log_dir: str = "logs"
+) -> Optional[Dict[str, Any]]:
     """
-    Create uniform random dataset for memorization experiments (Morris Figure 1).
-    
-    Args:
-        vocab_size: Size of vocabulary (e.g., 2048 for Morris reproduction)
-        seq_length: Length of each sequence (e.g., 64)
-        num_samples: Number of sequences in dataset
-        seed: Random seed for reproducibility
-        
-    Returns:
-        Tuple of (data, labels) tensors:
-        - data: [num_samples, seq_length] of random tokens
-        - labels: [num_samples, seq_length] shifted by 1 for language modeling
-        
-    Raises:
-        ValueError: If any parameter is <= 0
-        MemoryError: If dataset too large for available memory
-        
-    Example:
-        data, labels = create_toy_dataset(2048, 64, 1000)
-        # Creates 1000 sequences of 64 tokens each from vocab of 2048
+    Load latest experiment state for resumable training.
+    Returns None if no previous state found, enables CPU→GPU deployment.
     """
 
-def validate_dataset(data: torch.Tensor, labels: torch.Tensor) -> bool:
+def get_experiment_progress(
+    experiment_name: str,
+    log_dir: str = "logs"
+) -> Dict[str, Any]:
     """
-    Validate dataset tensors for training compatibility.
-    
-    Args:
-        data: Input token sequences [batch_size, seq_length]
-        labels: Target token sequences [batch_size, seq_length]
-        
-    Returns:
-        bool: True if dataset is valid for training
-        
-    Raises:
-        TypeError: If inputs are not torch.Tensor
-        ValueError: If tensor shapes are incompatible
-        
-    Example:
-        is_valid = validate_dataset(data, labels)  # True if shapes match
+    Get experiment progress summary for Morris reproduction.
+    Returns status, latest measurements, and total progress statistics.
     """
 
-def get_dataset_stats(data: torch.Tensor, vocab_size: int) -> Dict[str, float]:
+# ===== DATA MODULE (src/data/) =====
+
+def create_uniform_dataset(
+    vocab_size: int,
+    sequence_length: int,
+    dataset_size: int,
+    device: torch.device = torch.device("cpu")
+) -> torch.Tensor:
     """
-    Calculate dataset statistics for analysis.
-    
-    Args:
-        data: Token sequences [batch_size, seq_length]
-        vocab_size: Size of vocabulary
-        
-    Returns:
-        Dict containing:
-        - 'empirical_entropy': H(X) in bits
-        - 'total_tokens': Total number of tokens
-        - 'unique_tokens': Number of unique tokens used
-        - 'vocab_coverage': Fraction of vocabulary used
-        
-    Raises:
-        ValueError: If data contains tokens >= vocab_size
-        
-    Example:
-        stats = get_dataset_stats(data, 2048)
-        # {'empirical_entropy': 10.95, 'total_tokens': 64000, ...}
+    Create uniform random dataset for Morris reproduction.
+    Generates sequences with specified vocab size and length for entropy analysis.
     """
 
-# =============================================================================
-# ENTROPY CALCULATIONS (src/metrics/entropy_calculator.py)
-# =============================================================================
-
-def calculate_empirical_entropy(data: torch.Tensor, vocab_size: int) -> float:
+def calculate_dataset_entropy(
+    dataset: torch.Tensor,
+    vocab_size: int
+) -> float:
     """
-    Calculate empirical entropy H(X) of dataset.
-    
-    Args:
-        data: Token sequences [batch_size, seq_length]
-        vocab_size: Total vocabulary size
-        
-    Returns:
-        float: Empirical entropy in bits
-        
-    Raises:
-        ValueError: If data contains invalid tokens
-        RuntimeError: If calculation fails due to numerical issues
-        
-    Example:
-        h_x = calculate_empirical_entropy(data, 2048)  # ~11.0 for uniform
+    Calculate H(X) entropy of dataset.
+    Computes empirical entropy over token distributions in dataset.
     """
 
-def calculate_conditional_entropy(data: torch.Tensor, model_probs: torch.Tensor, vocab_size: int) -> float:
+# ===== METRICS MODULE (src/metrics/) =====
+
+def calculate_conditional_entropy_model(
+    model: torch.nn.Module,
+    dataset: torch.Tensor,
+    device: torch.device
+) -> float:
     """
-    Calculate conditional entropy H(X|θ) given model predictions.
-    
-    Args:
-        data: True token sequences [batch_size, seq_length]
-        model_probs: Model probability distributions [batch_size, seq_length, vocab_size]
-        vocab_size: Total vocabulary size
-        
-    Returns:
-        float: Conditional entropy H(X|θ) in bits
-        
-    Raises:
-        ValueError: If shapes don't match or probs don't sum to 1
-        RuntimeError: If numerical instability (log of 0)
-        
-    Example:
-        h_x_given_theta = calculate_conditional_entropy(data, model_outputs, 2048)
+    Calculate H(X|θ) - conditional entropy given trained model.
+    Uses model predictions to estimate entropy of data given model parameters.
     """
 
-def calculate_unintended_memorization(h_x: float, h_x_given_theta_hat: float, h_x_given_theta_and_theta_hat: float) -> float:
+def calculate_conditional_entropy_population(
+    model_ensemble: List[torch.nn.Module],
+    dataset: torch.Tensor,
+    device: torch.device
+) -> float:
     """
-    Calculate unintended memorization following Morris et al. definition.
-    
-    Args:
-        h_x: Empirical entropy H(X)
-        h_x_given_theta_hat: Conditional entropy H(X|θ̂) from trained model
-        h_x_given_theta_and_theta_hat: Joint conditional entropy H(X|θ,θ̂) from reference model
-        
-    Returns:
-        float: Unintended memorization in bits
-        
-    Raises:
-        ValueError: If any entropy value is negative
-        
-    Example:
-        memorization = calculate_unintended_memorization(11.0, 5.2, 4.8)  # 0.4 bits
+    Calculate H(X|θ̄) - conditional entropy given population of models.
+    Estimates entropy using ensemble averaging for population distribution.
     """
 
-def validate_probability_distribution(probs: torch.Tensor, tolerance: float = 1e-6) -> bool:
+def calculate_joint_conditional_entropy(
+    model: torch.nn.Module,
+    model_ensemble: List[torch.nn.Module],
+    dataset: torch.Tensor,
+    device: torch.device
+) -> float:
     """
-    Validate that tensor represents valid probability distributions.
-    
-    Args:
-        probs: Probability tensor [..., vocab_size]
-        tolerance: Numerical tolerance for sum-to-1 check
-        
-    Returns:
-        bool: True if valid probability distribution
-        
-    Raises:
-        ValueError: If probabilities are negative or > 1
-        
-    Example:
-        is_valid = validate_probability_distribution(model_probs, 1e-6)
+    Calculate H(X|θ,θ̄) - joint conditional entropy.
+    Computes entropy conditioned on both specific model and population.
     """
 
-# =============================================================================
-# ERROR HANDLING (src/utils/error_handlers.py)
-# =============================================================================
-
-def validate_function_inputs(func_name: str, **kwargs) -> None:
+def calculate_memorization_metric(
+    H_X_given_theta_bar: float,
+    H_X_given_theta_theta_bar: float
+) -> float:
     """
-    Validate function inputs with type checking and value ranges.
-    
-    Args:
-        func_name: Name of calling function for error context
-        **kwargs: Named arguments to validate
-        
-    Raises:
-        TypeError: If argument types don't match expectations
-        ValueError: If argument values are out of valid range
-        
-    Example:
-        validate_function_inputs('create_toy_dataset', 
-                               vocab_size=2048, seq_length=64, num_samples=1000)
+    Calculate memorization = H(X|θ̄) - H(X|θ,θ̄).
+    Morris paper definition of unintended memorization measurement.
     """
 
-def handle_computation_error(error: Exception, context: str) -> None:
+def calculate_generalization_metric(
+    H_X_given_theta: float,
+    H_X_given_theta_theta_bar: float
+) -> float:
     """
-    Handle computation errors with informative logging and recovery suggestions.
-    
-    Args:
-        error: The original exception
-        context: Description of what operation failed
-        
-    Raises:
-        RuntimeError: Always, with enhanced error message
-        
-    Example:
-        try:
-            result = some_computation()
-        except Exception as e:
-            handle_computation_error(e, "entropy calculation")
+    Calculate generalization = H(X|θ) - H(X|θ,θ̄).
+    Morris paper definition of generalization capability measurement.
     """
 
-# =============================================================================
-# CONFIGURATION CONSTANTS
-# =============================================================================
+# ===== MODELS MODULE (src/models/) =====
 
-# Morris et al. reproduction parameters
-MORRIS_SMALLEST_MODEL_PARAMS: int = 170_000  # 170K parameter model
-MORRIS_VOCAB_SIZE: int = 2048
-MORRIS_SEQ_LENGTH: int = 64
-MORRIS_BITS_PER_PARAMETER: float = 3.6
-MORRIS_DATASET_SIZES: List[int] = [100, 316, 1000, 3162, 10000, 31623, 100000]  # Log scale
+def create_gpt2_170k_model(
+    vocab_size: int = 2048,
+    n_embd: int = 128,
+    n_head: int = 2,
+    n_layer: int = 2,
+    block_size: int = 64
+) -> torch.nn.Module:
+    """
+    Create 170K parameter GPT-2 model for Morris reproduction.
+    Matches smallest model configuration from Morris et al. paper.
+    """
 
-# Supported model architectures
-SUPPORTED_ARCHITECTURES: List[str] = ['gpt2', 'mamba']
+def count_model_parameters(model: torch.nn.Module) -> int:
+    """
+    Count total trainable parameters in model.
+    Ensures model matches target parameter count for Morris experiments.
+    """
 
-# Device-specific settings
-CPU_BATCH_SIZE: int = 32
-GPU_BATCH_SIZE: int = 128
-CPU_NUM_WORKERS: int = 2
-GPU_NUM_WORKERS: int = 4
+# ===== TRAINING MODULE (src/training/) =====
+
+def train_single_model(
+    model: torch.nn.Module,
+    dataset: torch.Tensor,
+    device: torch.device,
+    steps: int,
+    learning_rate: float = 1e-4,
+    logger: Optional[logging.Logger] = None
+) -> torch.nn.Module:
+    """
+    Train single model for Morris experiment.
+    Includes entropy measurement logging at specified intervals.
+    """
+
+def train_model_ensemble(
+    num_models: int,
+    model_factory: callable,
+    dataset: torch.Tensor,
+    device: torch.device,
+    steps: int,
+    logger: Optional[logging.Logger] = None
+) -> List[torch.nn.Module]:
+    """
+    Train ensemble of models for population entropy calculations.
+    Required for H(X|θ̄) and H(X|θ,θ̄) measurements in Morris reproduction.
+    """
+
+def save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    step: int,
+    loss: float,
+    experiment_name: str,
+    checkpoint_dir: str = "checkpoints"
+) -> str:
+    """
+    Save training checkpoint with model state and metadata.
+    Enables resumable training for CPU debugging → GPU deployment workflow.
+    """
+
+def load_checkpoint(
+    checkpoint_path: str,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device
+) -> Tuple[torch.nn.Module, torch.optim.Optimizer, int, float]:
+    """
+    Load checkpoint and restore training state.
+    Returns model, optimizer, step, and loss for resumable training.
+    """
+
+# ===== EXPERIMENT ORCHESTRATION =====
+
+def run_morris_figure1_experiment(
+    dataset_sizes: List[int],
+    model_params: int = 170000,
+    vocab_size: int = 2048,
+    sequence_length: int = 64,
+    training_steps: int = 10000,
+    device: torch.device = torch.device("cpu"),
+    experiment_name: str = "morris_figure1"
+) -> Dict[str, Any]:
+    """
+    Run complete Morris Figure 1 reproduction experiment.
+    Tests unintended memorization vs dataset size with entropy measurements.
+    """
+
+def generate_morris_figure1_plot(
+    experiment_results: Dict[str, Any],
+    output_path: str = "morris_figure1_reproduction.png"
+) -> None:
+    """
+    Generate Morris Figure 1 reproduction plot.
+    Plots memorization metrics vs dataset size for comparison with original.
+    """
+
+# ===== UTILITY FUNCTIONS =====
+
+def validate_morris_config(
+    vocab_size: int,
+    sequence_length: int,
+    model_params: int,
+    dataset_sizes: List[int]
+) -> bool:
+    """
+    Validate configuration matches Morris paper requirements.
+    Ensures experiment parameters align with reproducibility standards.
+    """
+
+def estimate_computation_requirements(
+    dataset_sizes: List[int],
+    training_steps: int,
+    model_params: int,
+    device: torch.device
+) -> Dict[str, float]:
+    """
+    Estimate memory and time requirements for Morris experiment.
+    Helps plan CPU debugging vs GPU deployment strategy.
+    """
